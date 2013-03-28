@@ -3,36 +3,29 @@ rhythmbox-vk
 
 rhythmbox-3 plugin for vk.com
 
+by Radist Morse
+
 NOTES:
 
 Working with rhythmbox-2.98
 
 INSTALLATION:
-cd ~/.local/share/rhythmbox/plugins
-git clone https://github.com/radistmorse/rhythmbox-vk.git vk
-edit ./vk/vk.py by providing
-USER_ID=""
-SECRET_KEY=""
-API_ID=""
+1. cd ~/.local/share/rhythmbox/plugins
+2. git clone https://github.com/radistmorse/rhythmbox-vk.git vk
+3. Switch the plugin on
+4. Press "configure" and provide three needed variables.
 I really don't know how it should be obtained. I myself found it in similar
- scripts, but as it's kind of secret/personal I don't provide it. In the
- future I hope to make UI for it.
+ scripts, but as it's kind of secret/personal I don't provide it.
 
 USAGE:
-Plugin is currently in early development stage and doesn't work very good.
 1. Enter the search line and press "Search"
-2. IMPORTANT Wait until the database finished updating
-3. IMPORTANT Press "search" again, thus updating metadata for found tracks. Fail
- to do so will result in polluted database.
-4. Go to "library" and select the "vk.com" album. All the tracks will be there.
+2. You can play the tracks right from the results tab, or you can move it to default playlist
+4. Press "clear" to clear the results
 
 TODO:
-1. Fix the track adding. The best would be to avoid adding tracks to the database
- at all. But if it will be proven to be unavoidable, it should be added properly
- in one go.
-2. Make VKSource fully functional, turn it into the playlist and make it possible
- to delete tracks from it
-3. Config + ability to download tracks
+1. Ability to download tracks
+2. Ability to add tracks to the library permanently
+3. (probably not going to happen) An UI to extract the needed variables automatically
 
 
 Based loosely on
@@ -41,7 +34,7 @@ Which in turn is based on
 https://github.com/grunichev/rhythmbox-vkontakte
 
 
-
+LICENSE
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

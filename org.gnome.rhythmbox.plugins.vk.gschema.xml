@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-extensions">
+  <schema path="/org/gnome/rhythmbox/plugins/vk/" id="org.gnome.rhythmbox.plugins.vk">
+    <key type="s" name="api-id">
+      <default>""</default>
+      <summary>API_ID</summary>
+      <description>System variable API_ID</description>
+    </key>
+    <key type="s" name="user-id">
+      <default>""</default>
+      <summary>USER_ID</summary>
+      <description>System variable USER_ID</description>
+    </key>
+    <key type="s" name="secret">
+      <default>""</default>
+      <summary>SECRET</summary>
+      <description>System variable SECRET</description>
+    </key>
+  </schema>
+</schemalist>
