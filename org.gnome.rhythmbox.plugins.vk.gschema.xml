@@ -16,5 +16,10 @@
       <summary>SECRET</summary>
       <description>System variable SECRET</description>
     </key>
+    <key type="i" name="amount">
+      <default>100</default>
+      <summary>Number of tracks</summary>
+      <description>The number of tracks which will be shown in results</description>
+    </key>
   </schema>
 </schemalist>

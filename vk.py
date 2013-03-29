@@ -57,7 +57,7 @@ class VKRhythmbox(GObject.Object, Peas.Activatable):
 		what, width, height = Gtk.icon_size_lookup(Gtk.IconSize.LARGE_TOOLBAR)
 		icon = GdkPixbuf.Pixbuf.new_from_file_at_size(self.plugin_info.get_data_dir()+"/vk.png", width, height)
 		#create Source (aka tab)
-		self.source = GObject.new (VKSource, shell=shell, name=_("VK Playlist"), query_model=model, entry_type=vk_entry_type, plugin=self, pixbuf=icon)
+		self.source = GObject.new (VKSource, shell=shell, name="VK "+_("Music"), query_model=model, entry_type=vk_entry_type, plugin=self, pixbuf=icon)
 		self.source.setup(db, self.settings)
 		shell.register_entry_type_for_source(self.source, vk_entry_type)
 		#append source to the library
@@ -82,6 +82,10 @@ class VKSource(RB.BrowserSource):
 		self.USER_ID = settings.get_string(key)
 	def on_api_id_changed(self, settings, key):
 		self.API_ID = settings.get_string(key)
+	def on_amount_changed(self, settings, key):
+		self.AMOUNT = settings.get_int(key)
+		self.search_amount.set_text(str(self.AMOUNT))
+		
 
 	def setup(self, db, settings):
 		self.db = db
@@ -90,25 +94,29 @@ class VKSource(RB.BrowserSource):
 		self.SECRET_KEY = self.settings.get_string('secret')
 		self.USER_ID = self.settings.get_string('user-id')
 		self.API_ID = self.settings.get_string('api-id')
+		self.AMOUNT =  self.settings.get_int('amount')
 		#monitoring callbacks
 		self.settings.connect("changed::secret", self.on_secret_key_changed)
 		self.settings.connect("changed::user-id", self.on_user_id_changed)
 		self.settings.connect("changed::api-id", self.on_api_id_changed)
+		self.settings.connect("changed::amount", self.on_amount_changed)
 		#UI setup
 		search_line = Gtk.HBox()
 		search_input = Gtk.Entry()
-		search_line.pack_start(search_input, expand=True, fill=True, padding=5)
+		search_line.pack_start(search_input, expand=True, fill=True, padding=2)
 		search_button = Gtk.Button(_("Search"))
-		search_line.pack_start(search_button, expand=False, fill=False, padding=5)
-		search_amount_label = Gtk.Label(_("Number of results"))
-		search_line.pack_start(search_amount_label, expand=False, fill=False, padding=5)
-		search_amount = Gtk.Entry()
-		search_line.pack_start(search_amount, expand=False, fill=False, padding=5)
-		search_amount.set_text("100")
-		clear_button = Gtk.Button(_("Clear Results"))
-		search_line.pack_start(clear_button, expand=False, fill=False, padding=5)
+		search_line.pack_start(search_button, expand=False, fill=False, padding=2)
+		search_amount_label = Gtk.Label(_("#"))
+		search_amount_label.set_margin_left(10)
+		search_line.pack_start(search_amount_label, expand=False, fill=False, padding=0)
+		self.search_amount = Gtk.Entry(width_chars=7)
+		self.search_amount.set_text(str(self.AMOUNT))
+		self.search_amount.set_margin_right(10)
+		search_line.pack_start(self.search_amount, expand=False, fill=False, padding=0)
+		clear_button = Gtk.Button(_("Clear"))
+		search_line.pack_start(clear_button, expand=False, fill=False, padding=2)
 		#buttons actions
-		search_button.connect("clicked", self.search_button_clicked, search_input, search_amount)
+		search_button.connect("clicked", self.search_button_clicked, search_input, self.search_amount)
 		clear_button.connect("clicked", self.clear_button_clicked)
 
 		search_line.show_all()
@@ -120,12 +128,14 @@ class VKSource(RB.BrowserSource):
 		search_line = s_input.get_text()
 		search_num = s_amount.get_text()
 		try :
-			search_num = str(int(search_num))
+			search_num = int(search_num)
+			self.settings.set_int("amount",search_num)
+			self.AMOUNT = search_num
 		except :
-			search_num = "100"
+			search_num = self.AMOUNT
 		# Only do anything if there is text in the search entry
 		if len(search_line) > 0 :
-			search = VkontakteSearch(search_line, search_num, self.db, self.props.entry_type, self.props.query_model, self.USER_ID, self.API_ID, self.SECRET_KEY)
+			search = VkontakteSearch(search_line, str(search_num), self.db, self.props.entry_type, self.props.query_model, self.USER_ID, self.API_ID, self.SECRET_KEY)
 			search.start()
 
 	def clear_button_clicked(self, button) :
@@ -179,12 +189,9 @@ class VkontakteSearch:
 			entry = RB.RhythmDBEntry.new(self.db, self.entry_type, result.url)
 		if entry is not None :
 			#update metadata
-			if result.title:
-				self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, decode_htmlentities(result.title).encode("utf-8"))
-			if result.duration:
-				self.db.entry_set(entry, RB.RhythmDBPropType.DURATION, result.duration)
-			if result.artist:
-				self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, decode_htmlentities(result.artist).encode("utf-8"))
+			self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, decode_htmlentities(result.title).encode("utf-8"))
+			self.db.entry_set(entry, RB.RhythmDBPropType.DURATION, result.duration)
+			self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, decode_htmlentities(result.artist).encode("utf-8"))
 			#all the songs will get "vk.com" album
 			self.db.entry_set(entry, RB.RhythmDBPropType.ALBUM, "vk.com".encode("utf-8"))
 
