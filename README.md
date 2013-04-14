@@ -21,7 +21,7 @@ USAGE:
 --------------
 - Enter the search line and press "Search"  
 - You can play the tracks right from the results tab, or you can move it to default playlist  
-- Press "clear" to clear the results *not working yet. you can select all aby pressing ctrl-a and choose "delete" from the pop-up menu*  
+- Press "clear" to clear the results *not working yet. you can select all by pressing ctrl-a and choosing "delete" from the pop-up menu*  
 
 TODO:
 --------------
