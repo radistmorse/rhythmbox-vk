@@ -2,7 +2,7 @@
 <schemalist gettext-domain="gnome-shell-extensions">
   <schema path="/org/gnome/rhythmbox/plugins/vk/" id="org.gnome.rhythmbox.plugins.vk">
     <key type="s" name="api-id">
-      <default>""</default>
+      <default>"1922565"</default>
       <summary>API_ID</summary>
       <description>System variable API_ID</description>
     </key>
@@ -11,15 +11,20 @@
       <summary>USER_ID</summary>
       <description>System variable USER_ID</description>
     </key>
-    <key type="s" name="secret">
+    <key type="s" name="token">
       <default>""</default>
-      <summary>SECRET</summary>
-      <description>System variable SECRET</description>
+      <summary>TOKEN</summary>
+      <description>System variable TOKEN</description>
     </key>
     <key type="i" name="amount">
       <default>100</default>
       <summary>Number of tracks</summary>
       <description>The number of tracks which will be shown in results</description>
+    </key>
+    <key type="s" name="query">
+      <default>""</default>
+      <summary>Search line</summary>
+      <description>Saved value of the last search query</description>
     </key>
   </schema>
 </schemalist>
