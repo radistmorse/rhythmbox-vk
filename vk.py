@@ -241,6 +241,10 @@ class VkontakteSearch:
 		xmldoc = minidom.parseString(data.encode("utf-8"))
 		audios = xmldoc.getElementsByTagName("audio")
 		if len(audios) == 0 :
+			count = xmldoc.getElementsByTagName("count")
+			if len(count) > 0 and count[0].firstChild.nodeValue == "0" :
+				data = "No results found"
+				#TODO: better way of showing this to user
 			d = Gtk.Dialog()
 			label = Gtk.Label(data)
 			d.vbox.pack_start(label,True,True,0)
