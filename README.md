@@ -7,7 +7,7 @@ by Radist Morse
 
 NOTES:
 --------------
-Working with rhythmbox-2.98
+Working with rhythmbox-3.0
 
 INSTALLATION:
 --------------

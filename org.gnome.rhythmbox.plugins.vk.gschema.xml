@@ -6,11 +6,6 @@
       <summary>API_ID</summary>
       <description>System variable API_ID</description>
     </key>
-    <key type="s" name="user-id">
-      <default>""</default>
-      <summary>USER_ID</summary>
-      <description>System variable USER_ID</description>
-    </key>
     <key type="s" name="token">
       <default>""</default>
       <summary>TOKEN</summary>

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
-from htmlentitydefs import name2codepoint as n2cp
+from html.entities import name2codepoint as n2cp
 import re
 
 def decode_htmlentities(string):
@@ -23,14 +23,14 @@ def decode_htmlentities(string):
             # decoding by number
             if match.group(2) == '':
                 # number is in decimal
-                return unichr(int(ent))
+                return chr(int(ent))
             elif match.group(2) == 'x':
                 # number is in hex
-                return unichr(int('0x'+ent, 16))
+                return chr(int('0x'+ent, 16))
         else:
             # they were using a name
             cp = n2cp.get(ent)
-            if cp: return unichr(cp)
+            if cp: return chr(cp)
             else: return match.group()
     
     entity_re = re.compile(r'&(#?)(x?)(\w+);')

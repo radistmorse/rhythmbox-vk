@@ -17,7 +17,7 @@
 from gi.repository import RB, Gio, Gtk, GdkPixbuf, GObject, Peas, PeasGtk, WebKit
 import rb #"Loader" heler class
 from xml.dom import minidom #xml parser
-import urllib2 #search line escaping, simple https requests
+import urllib.request, urllib.error, urllib.parse #search line escaping, simple https requests
 from html_decode import decode_htmlentities #results decoding
 
 import gettext
@@ -40,7 +40,7 @@ class VKRhythmbox(GObject.Object, Peas.Activatable):
 		GObject.Object.__init__(self)
 			
 	def do_activate(self):
-		print "activating vk plugin"
+		print("activating vk plugin")
 		#connecting to GSettings
 		schema_source = Gio.SettingsSchemaSource.new_from_directory(self.plugin_info.get_data_dir(), Gio.SettingsSchemaSource.get_default(), False,)
 		schema = schema_source.lookup('org.gnome.rhythmbox.plugins.vk', False)
@@ -48,15 +48,17 @@ class VKRhythmbox(GObject.Object, Peas.Activatable):
 		#system settings
 		shell = self.object
 		db = shell.props.db
-		#model = RB.RhythmDBQueryModel.new_empty(db)
 		vk_entry_type = VKEntryType()
 		self.entry_type = vk_entry_type
 		db.register_entry_type(vk_entry_type)
 		#icon
-		what, width, height = Gtk.icon_size_lookup(Gtk.IconSize.LARGE_TOOLBAR)
-		icon = GdkPixbuf.Pixbuf.new_from_file_at_size(self.plugin_info.get_data_dir()+"/vk.png", width, height)
+		iconfile = Gio.File.new_for_path(self.plugin_info.get_data_dir()+"/vk-symbolic.svg")
 		#create Source (aka tab)
-		self.source = GObject.new (VKSource, shell=shell, name="VK "+_("Music"), entry_type=vk_entry_type, plugin=self, pixbuf=icon)#query_model=model, 
+		self.source = GObject.new (VKSource, shell=shell,
+						name="VK "+_("Music"),
+						entry_type=vk_entry_type,
+						plugin=self,
+						icon=Gio.FileIcon.new(iconfile))
 		self.source.setup(db, self.settings)
 		shell.register_entry_type_for_source(self.source, vk_entry_type)
 		#append source to the library
@@ -64,7 +66,7 @@ class VKRhythmbox(GObject.Object, Peas.Activatable):
 		shell.append_display_page(self.source, group)
 
 	def do_deactivate(self):
-		print "deactivating vk plugin"
+		print("deactivating vk plugin")
 		self.source.delete_thyself()
 		self.source = None
 		self.settings = None
@@ -78,9 +80,6 @@ class VKSource(RB.BrowserSource):
 	#callbacks for monitoring GSettings change
 	def on_token_changed(self, settings, key):
 		self.TOKEN = settings.get_string(key)
-		self.check_token()
-	def on_user_id_changed(self, settings, key):
-		self.USER_ID = settings.get_string(key)
 		self.check_token()
 	def on_api_id_changed(self, settings, key):
 		self.API_ID = settings.get_string(key)
@@ -99,13 +98,11 @@ class VKSource(RB.BrowserSource):
 		self.settings = settings
 		#initial GSettings values
 		self.TOKEN = self.settings.get_string('token')
-		self.USER_ID = self.settings.get_string('user-id')
 		self.API_ID = self.settings.get_string('api-id')
 		self.AMOUNT =  self.settings.get_int('amount')
 		self.QUERY = self.settings.get_string('query')
 		#monitoring callbacks
 		self.settings.connect("changed::token", self.on_token_changed)
-		self.settings.connect("changed::user-id", self.on_user_id_changed)
 		self.settings.connect("changed::api-id", self.on_api_id_changed)
 		self.settings.connect("changed::amount", self.on_amount_changed)
 		self.settings.connect("changed::query", self.on_query_changed)
@@ -145,9 +142,9 @@ class VKSource(RB.BrowserSource):
 
 	def check_token(self):
 		self.configured = False
-		if (len(self.USER_ID) == 0) or (len(self.TOKEN) == 0) :
+		if (len(self.TOKEN) == 0) :
 			return
-		xml = minidom.parseString(urllib2.urlopen("https://api.vk.com/method/users.isAppUser.xml?uid=%s&access_token=%s" % (self.USER_ID, self.TOKEN)).read())
+		xml = minidom.parseString(urllib.request.urlopen("https://api.vk.com/method/users.isAppUser.xml?access_token=%s" % (self.TOKEN)).read())
 		response = xml.getElementsByTagName("response")
 		if len(response) == 0 or response[0].firstChild.nodeValue != "1" :
 			return
@@ -216,28 +213,32 @@ class VkontakteSearch:
 			return
 
 		self.entries_hashes.append(strhash)
-		#first, let's try to find if the song with this url is already in db
-		entry = self.db.entry_lookup_by_location(result.url)
-		if entry is not None :
-			return
-		#add song to db
-		entry = RB.RhythmDBEntry.new(self.db, self.entry_type, result.url)
-		self.db.commit()
-		if entry is not None :
-			#update metadata
-			self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, decode_htmlentities(result.title).encode("utf-8"))
-			self.db.entry_set(entry, RB.RhythmDBPropType.DURATION, result.duration)
-			self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, decode_htmlentities(result.artist).encode("utf-8"))
-			#all the songs will get "vk.com" album
-			self.db.entry_set(entry, RB.RhythmDBPropType.ALBUM, "vk.com".encode("utf-8"))
-		self.db.commit()
+		try:
+			#first, let's try to find if the song with this url is already in db
+			entry = self.db.entry_lookup_by_location(result.url)
+			if entry is not None :
+				return
+			#add song to db
+			entry = RB.RhythmDBEntry.new(self.db, self.entry_type, result.url)
+			self.db.commit()
+			if entry is not None :
+				#update metadata
+				self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, decode_htmlentities(result.title))
+				self.db.entry_set(entry, RB.RhythmDBPropType.DURATION, result.duration)
+				self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, decode_htmlentities(result.artist))
+				#all the songs will get "vk.com" album
+				self.db.entry_set(entry, RB.RhythmDBPropType.ALBUM, "vk.com")
+			self.db.commit()
+		except Exception as e: # This happens on duplicate uris being added
+			sys.excepthook(*sys.exc_info())
+			print("Couldn't add %s - %s" % (decode_htmlentities(result.artist), decode_htmlentities(result.title)), e)		
 
 	def on_search_results_recieved(self, data):
 		data = data.decode("utf-8")
 		# vkontakte sometimes returns invalid XML with empty first line
 		data = data.lstrip()
 		# remove invalid symbol that occured in titles/artist
-		data = data.replace(u'\uffff', '')
+		data = data.replace('\uffff', '')
 		xmldoc = minidom.parseString(data.encode("utf-8"))
 		audios = xmldoc.getElementsByTagName("audio")
 		if len(audios) == 0 :
@@ -256,7 +257,7 @@ class VkontakteSearch:
 
 	# Starts searching
 	def start(self):
-		path = "https://api.vk.com/method/audio.search.xml?auto_complete=1&count=%s&&q=%s&access_token=%s" % (self.search_num,urllib2.quote(self.search_line),self.TOKEN)
+		path = "https://api.vk.com/method/audio.search.xml?auto_complete=1&count=%s&&q=%s&access_token=%s" % (self.search_num,urllib.parse.quote(self.search_line),self.TOKEN)
 		loader = rb.Loader()
 		loader.get_url(path, self.on_search_results_recieved)
 
@@ -277,7 +278,6 @@ class VKRhythmboxConfig(GObject.Object, PeasGtk.Configurable):
 		self.API_ID = self.settings.get_string('api-id')
 
 		self.TOKEN = self.settings.get_string('token')
-		self.USER_ID = self.settings.get_string('user-id')
 
 		grid = Gtk.Grid()
 		wv = WebKit.WebView()
@@ -285,13 +285,12 @@ class VKRhythmboxConfig(GObject.Object, PeasGtk.Configurable):
 		def uri_changed(webview,prop, grid):
 			url = webview.get_property(prop.name)
 			if url.find("access_token") != -1 :
-				webview.destroy()
 				tl = grid.get_toplevel()
-				#we should destroy options dialog here
-				#tl.destroy()
-				params = {key:value for key,value in map(lambda a: a.split("="),url.split("#")[1].split("&"))}
+				params = {key:value for key,value in [a.split("=") for a in url.split("#")[1].split("&")]}
 				self.settings.set_string('token', params["access_token"])
-				self.settings.set_string('user-id', params["user_id"])
+				#we should destroy options dialog here
+				#webview.destroy()
+				#tl.destroy()
 		wv.connect("notify::uri",uri_changed, grid)
 		grid.attach(wv,0,0,1,1)
 		return grid
