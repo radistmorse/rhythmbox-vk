@@ -13,21 +13,19 @@ INSTALLATION:
 --------------
 - cd ~/.local/share/rhythmbox/plugins  
 - git clone https://github.com/radistmorse/rhythmbox-vk.git vk  
-- Switch the plugin on  
+- Switch the plugin on.  
 - Press "configure" and login to your VK account. Allow the plugin to access the musick.  
-- **Restart rhythmbox!**
+- Close the config window manually.
 
 USAGE:
 --------------
 - Enter the search line and press "Search"  
 - You can play the tracks right from the results tab, or you can move it to default playlist  
-- Press "clear" to clear the results *not working yet. you can select all by pressing ctrl-a and choosing "delete" from the pop-up menu*  
+- Press "clear" to clear the results *sometimes it crashes rhythmbox. you can select all by pressing ctrl-a and choose "delete" from the pop-up menu*  
 
 TODO:
 --------------
-- bugfixes: make "clear all" work, work without restart
-- Ability to download tracks  
-- Ability to add tracks to the library permanently  
+- nothing new will be done here. GNOME drops RB in favour of gnome-music anyway.  
 
 
 

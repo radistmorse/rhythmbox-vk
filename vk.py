@@ -18,7 +18,7 @@ from gi.repository import RB, Gio, Gtk, GdkPixbuf, GObject, Peas, PeasGtk, WebKi
 import rb #"Loader" heler class
 from xml.dom import minidom #xml parser
 import urllib.request, urllib.error, urllib.parse #search line escaping, simple https requests
-from html_decode import decode_htmlentities #results decoding
+#from html_decode import decode_htmlentities #results decoding
 
 import gettext
 gettext.install('rhythmbox', RB.locale_dir())
@@ -101,6 +101,7 @@ class VKSource(RB.BrowserSource):
 		self.API_ID = self.settings.get_string('api-id')
 		self.AMOUNT =  self.settings.get_int('amount')
 		self.QUERY = self.settings.get_string('query')
+		self.CAPTCHA_PARAM = ""
 		#monitoring callbacks
 		self.settings.connect("changed::token", self.on_token_changed)
 		self.settings.connect("changed::api-id", self.on_api_id_changed)
@@ -144,14 +145,38 @@ class VKSource(RB.BrowserSource):
 		self.configured = False
 		if (len(self.TOKEN) == 0) :
 			return
-		xml = minidom.parseString(urllib.request.urlopen("https://api.vk.com/method/users.isAppUser.xml?access_token=%s" % (self.TOKEN)).read())
+		xml = minidom.parseString(urllib.request.urlopen("https://api.vk.com/method/users.isAppUser.xml?access_token=%s%s" % (self.TOKEN, self.CAPTCHA_PARAM)).read())
+		self.CAPTCHA_PARAM = ""
 		response = xml.getElementsByTagName("response")
-		if len(response) == 0 or response[0].firstChild.nodeValue != "1" :
+		if not response or len(response) == 0 or response[0].firstChild.nodeValue != "1" :
+			error = xml.getElementsByTagName("error")
+			err_code = int(error[0].getElementsByTagName("error_code")[0].firstChild.nodeValue)
+			err_desc = str(error[0].getElementsByTagName("error_msg")[0].firstChild.nodeValue)
+			if (err_code == 14) : #captcha
+				captcha_sid = str(error[0].getElementsByTagName("captcha_sid")[0].firstChild.nodeValue)
+				captcha_img = str(error[0].getElementsByTagName("captcha_img")[0].firstChild.nodeValue)
+				cp_image=Gtk.Image()
+				cp_response=urllib.request.urlopen(captcha_img)
+				loader=GdkPixbuf.PixbufLoader.new_with_type('jpeg')
+				loader.write(cp_response.read())
+				loader.close()        
+				cp_image.set_from_pixbuf(loader.get_pixbuf())
+				d = Gtk.Dialog(buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
+				cp_input = Gtk.Entry(width_chars=7,activates_default=True)
+				d.vbox.pack_start(cp_image, expand=False, fill=False, padding=0)
+				d.vbox.pack_start(cp_input, expand=False, fill=False, padding=0)
+				d.show_all()
+				d.run()
+				cp_text = cp_input.get_text()
+				d.destroy()
+				if len(cp_text) > 0 :
+					self.CAPTCHA_PARAM = "&captcha_sid="+captcha_sid+"&captcha_key="+cp_text
+					self.check_token() #do the check till victory!
 			return
 		self.configured = True
 		return
 
-	def show_warning(self):
+	def show_warning(self, err_code=-1, err_msg=""):
 		d = Gtk.Dialog(buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
 		l = Gtk.Label("Incorrect vk-token.\nReconfigure your plugin.")
 		d.vbox.pack_start(l, expand=False, fill=False, padding=0)
@@ -205,6 +230,7 @@ class VkontakteSearch:
 		self.query_model = query_model
 		self.entries_hashes = []
 		self.TOKEN = TOKEN
+		self.CAPTCHA_PARAM = ""
 		
 	def add_entry(self, result):
 		# add only distinct songs (unique by title+artist+duration) to prevent duplicates
@@ -223,23 +249,45 @@ class VkontakteSearch:
 			self.db.commit()
 			if entry is not None :
 				#update metadata
-				self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, decode_htmlentities(result.title))
+				self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, result.title)#decode_htmlentities(result.title))
 				self.db.entry_set(entry, RB.RhythmDBPropType.DURATION, result.duration)
-				self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, decode_htmlentities(result.artist))
+				self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, result.artist)#decode_htmlentities(result.artist))
 				#all the songs will get "vk.com" album
 				self.db.entry_set(entry, RB.RhythmDBPropType.ALBUM, "vk.com")
 			self.db.commit()
 		except Exception as e: # This happens on duplicate uris being added
 			sys.excepthook(*sys.exc_info())
-			print("Couldn't add %s - %s" % (decode_htmlentities(result.artist), decode_htmlentities(result.title)), e)		
+			print("Couldn't add %s - %s" % (result.artist, result.title), e)		
 
 	def on_search_results_recieved(self, data):
-		data = data.decode("utf-8")
 		# vkontakte sometimes returns invalid XML with empty first line
 		data = data.lstrip()
-		# remove invalid symbol that occured in titles/artist
-		data = data.replace('\uffff', '')
-		xmldoc = minidom.parseString(data.encode("utf-8"))
+		xmldoc = minidom.parseString(data)
+		error = xmldoc.getElementsByTagName("error")
+		if (error) and len(error) > 0 :
+			err_code = int(error[0].getElementsByTagName("error_code")[0].firstChild.nodeValue)
+			err_desc = str(error[0].getElementsByTagName("error_msg")[0].firstChild.nodeValue)
+			if (err_code == 14) : #captcha
+				captcha_sid = str(error[0].getElementsByTagName("captcha_sid")[0].firstChild.nodeValue)
+				captcha_img = str(error[0].getElementsByTagName("captcha_img")[0].firstChild.nodeValue)
+				cp_image=Gtk.Image()
+				cp_response=urllib.request.urlopen(captcha_img)
+				loader=GdkPixbuf.PixbufLoader.new_with_type('jpeg')
+				loader.write(cp_response.read())
+				loader.close()        
+				cp_image.set_from_pixbuf(loader.get_pixbuf())
+				d = Gtk.Dialog(buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
+				cp_input = Gtk.Entry(width_chars=7,activates_default=True)
+				d.vbox.pack_start(cp_image, expand=False, fill=False, padding=0)
+				d.vbox.pack_start(cp_input, expand=False, fill=False, padding=0)
+				d.show_all()
+				d.run()
+				cp_text = cp_input.get_text()
+				d.destroy()
+				if len(cp_text) > 0 :
+					self.CAPTCHA_PARAM = "&captcha_sid="+captcha_sid+"&captcha_key="+cp_text
+					self.start() #try again till victory!
+			return
 		audios = xmldoc.getElementsByTagName("audio")
 		if len(audios) == 0 :
 			count = xmldoc.getElementsByTagName("count")
@@ -257,7 +305,7 @@ class VkontakteSearch:
 
 	# Starts searching
 	def start(self):
-		path = "https://api.vk.com/method/audio.search.xml?auto_complete=1&count=%s&&q=%s&access_token=%s" % (self.search_num,urllib.parse.quote(self.search_line),self.TOKEN)
+		path = "https://api.vk.com/method/audio.search.xml?auto_complete=1&count=%s&&q=%s&access_token=%s%s" % (self.search_num,urllib.parse.quote(self.search_line),self.TOKEN,self.CAPTCHA_PARAM)
 		loader = rb.Loader()
 		loader.get_url(path, self.on_search_results_recieved)
 
