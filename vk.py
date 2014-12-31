@@ -15,10 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from gi.repository import RB, Gio, Gtk, GdkPixbuf, GObject, Peas, PeasGtk, WebKit
-import rb #"Loader" heler class
 from xml.dom import minidom #xml parser
+from xml.sax.saxutils import unescape #xml unescape
 import urllib.request, urllib.error, urllib.parse #search line escaping, simple https requests
-#from html_decode import decode_htmlentities #results decoding
 
 import gettext
 gettext.install('rhythmbox', RB.locale_dir())
@@ -249,9 +248,9 @@ class VkontakteSearch:
 			self.db.commit()
 			if entry is not None :
 				#update metadata
-				self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, result.title)#decode_htmlentities(result.title))
+				self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, unescape(result.title))
 				self.db.entry_set(entry, RB.RhythmDBPropType.DURATION, result.duration)
-				self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, result.artist)#decode_htmlentities(result.artist))
+				self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, unescape(result.artist))
 				#all the songs will get "vk.com" album
 				self.db.entry_set(entry, RB.RhythmDBPropType.ALBUM, "vk.com")
 			self.db.commit()
@@ -259,7 +258,10 @@ class VkontakteSearch:
 			sys.excepthook(*sys.exc_info())
 			print("Couldn't add %s - %s" % (result.artist, result.title), e)		
 
-	def on_search_results_recieved(self, data):
+	# Starts searching
+	def start(self):
+		path = "https://api.vk.com/method/audio.search.xml?auto_complete=1&count=%s&&q=%s&access_token=%s%s" % (self.search_num,urllib.parse.quote(self.search_line),self.TOKEN,self.CAPTCHA_PARAM)
+		data = urllib.request.urlopen(path).read()
 		# vkontakte sometimes returns invalid XML with empty first line
 		data = data.lstrip()
 		xmldoc = minidom.parseString(data)
@@ -302,12 +304,6 @@ class VkontakteSearch:
 			d.destroy()
 		for audio in audios:
 			self.add_entry(XMLResult(audio))
-
-	# Starts searching
-	def start(self):
-		path = "https://api.vk.com/method/audio.search.xml?auto_complete=1&count=%s&&q=%s&access_token=%s%s" % (self.search_num,urllib.parse.quote(self.search_line),self.TOKEN,self.CAPTCHA_PARAM)
-		loader = rb.Loader()
-		loader.get_url(path, self.on_search_results_recieved)
 
 #The class which deals with config window
 class VKRhythmboxConfig(GObject.Object, PeasGtk.Configurable):
