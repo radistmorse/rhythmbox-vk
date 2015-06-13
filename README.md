@@ -13,9 +13,9 @@ INSTALLATION:
 --------------
 - cd ~/.local/share/rhythmbox/plugins  
 - git clone https://github.com/radistmorse/rhythmbox-vk.git vk  
+- In rhythmbox go to menu->mudules  
 - Switch the plugin on.  
-- Press "configure" and login to your VK account. Allow the plugin to access the musick.  
-- Close the config window manually.
+- Press "configure" and login to your VK account. Allow the plugin to access the music.  
 
 USAGE:
 --------------
@@ -26,7 +26,6 @@ USAGE:
 TODO:
 --------------
 - nothing new will be done here. GNOME drops RB in favour of gnome-music anyway.  
-
 
 
 Based loosely on  

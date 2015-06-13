@@ -37,7 +37,7 @@ class VKRhythmbox(GObject.Object, Peas.Activatable):
 
 	def __init__(self):
 		GObject.Object.__init__(self)
-			
+
 	def do_activate(self):
 		print("activating vk plugin")
 		#connecting to GSettings
@@ -116,6 +116,9 @@ class VKSource(RB.BrowserSource):
 			 search_button.clicked()
 		self.search_input.connect("activate", click_search )
 		search_line.pack_start(search_button, expand=False, fill=False, padding=2)
+		self.search_fuzzy_checkbox = Gtk.CheckButton.new_with_label(_("Autocomplete"))
+		self.search_fuzzy_checkbox.set_margin_left(10)
+		search_line.pack_start(self.search_fuzzy_checkbox, expand=False, fill=False, padding=0)
 		search_amount_label = Gtk.Label(_("#"))
 		search_amount_label.set_margin_left(10)
 		search_line.pack_start(search_amount_label, expand=False, fill=False, padding=0)
@@ -127,7 +130,7 @@ class VKSource(RB.BrowserSource):
 		clear_button = Gtk.Button(_("Clear"))
 		search_line.pack_start(clear_button, expand=False, fill=False, padding=2)
 		#buttons actions
-		search_button.connect("clicked", self.search_button_clicked, self.search_input.get_text, self.search_amount.get_text)
+		search_button.connect("clicked", self.search_button_clicked, self.search_input.get_text, self.search_fuzzy_checkbox.get_active, self.search_amount.get_text)
 		clear_button.connect("clicked", self.clear_button_clicked)
 
 		search_line.show_all()
@@ -158,7 +161,7 @@ class VKSource(RB.BrowserSource):
 				cp_response=urllib.request.urlopen(captcha_img)
 				loader=GdkPixbuf.PixbufLoader.new_with_type('jpeg')
 				loader.write(cp_response.read())
-				loader.close()        
+				loader.close()
 				cp_image.set_from_pixbuf(loader.get_pixbuf())
 				d = Gtk.Dialog(buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
 				cp_input = Gtk.Entry(width_chars=7,activates_default=True)
@@ -175,7 +178,7 @@ class VKSource(RB.BrowserSource):
 		self.configured = True
 		return
 
-	def show_warning(self, err_code=-1, err_msg=""):
+	def show_warning(self):
 		d = Gtk.Dialog(buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
 		l = Gtk.Label("Incorrect vk-token.\nReconfigure your plugin.")
 		d.vbox.pack_start(l, expand=False, fill=False, padding=0)
@@ -183,20 +186,25 @@ class VKSource(RB.BrowserSource):
 		d.run()
 		d.destroy()
 
-	def search_button_clicked(self, button, s_input, s_amount) :
+	def search_button_clicked(self, button, s_input, s_fuzzy, s_amount) :
 		if not self.configured :
 			self.show_warning()
 			return
 		self.QUERY = s_input()
 		self.settings.set_string("query", self.QUERY)
+		self.FUZZY = "0"
+		if s_fuzzy() :
+		  self.FUZZY = "1"
 		try :
 			self.AMOUNT = int(s_amount())
 		except :
-			pass
+			self.AMOUNT = 100
+		if (self.AMOUNT <= 0) :
+		  self.AMOUNT = 100
 		self.settings.set_int("amount",self.AMOUNT)
 		# Only do anything if there is text in the search entry
 		if len(self.QUERY) > 0 :
-			search = VkontakteSearch(self.QUERY, str(self.AMOUNT), self.db, self.props.entry_type, self.props.query_model, self.TOKEN)
+			search = VkontakteSearch(self.QUERY, self.FUZZY, str(self.AMOUNT), self.db, self.props.entry_type, self.props.query_model, self.TOKEN)
 			search.start()
 
 	def clear_button_clicked(self, button) :
@@ -221,8 +229,9 @@ class XMLResult:
 		self.url = entry.getElementsByTagName('url')[0].firstChild.nodeValue
 
 class VkontakteSearch:
-	def __init__(self, search_line, search_num, db, entry_type, query_model, TOKEN):
+	def __init__(self, search_line, search_fuzzy, search_num, db, entry_type, query_model, TOKEN):
 		self.search_line = search_line
+		self.search_fuzzy = search_fuzzy
 		self.search_num = search_num
 		self.db = db
 		self.entry_type = entry_type
@@ -230,7 +239,7 @@ class VkontakteSearch:
 		self.entries_hashes = []
 		self.TOKEN = TOKEN
 		self.CAPTCHA_PARAM = ""
-		
+
 	def add_entry(self, result):
 		# add only distinct songs (unique by title+artist+duration) to prevent duplicates
 		strhash = ('%s%s%s' % (result.title, result.artist, result.duration)).lower()
@@ -256,11 +265,11 @@ class VkontakteSearch:
 			self.db.commit()
 		except Exception as e: # This happens on duplicate uris being added
 			sys.excepthook(*sys.exc_info())
-			print("Couldn't add %s - %s" % (result.artist, result.title), e)		
+			print("Couldn't add %s - %s" % (result.artist, result.title), e)
 
 	# Starts searching
 	def start(self):
-		path = "https://api.vk.com/method/audio.search.xml?auto_complete=1&count=%s&&q=%s&access_token=%s%s" % (self.search_num,urllib.parse.quote(self.search_line),self.TOKEN,self.CAPTCHA_PARAM)
+		path = "https://api.vk.com/method/audio.search.xml?auto_complete=%s&count=%s&&q=%s&access_token=%s%s" % (self.search_fuzzy,self.search_num,urllib.parse.quote(self.search_line),self.TOKEN,self.CAPTCHA_PARAM)
 		data = urllib.request.urlopen(path).read()
 		# vkontakte sometimes returns invalid XML with empty first line
 		data = data.lstrip()
@@ -276,7 +285,7 @@ class VkontakteSearch:
 				cp_response=urllib.request.urlopen(captcha_img)
 				loader=GdkPixbuf.PixbufLoader.new_with_type('jpeg')
 				loader.write(cp_response.read())
-				loader.close()        
+				loader.close()
 				cp_image.set_from_pixbuf(loader.get_pixbuf())
 				d = Gtk.Dialog(buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
 				cp_input = Gtk.Entry(width_chars=7,activates_default=True)
@@ -320,22 +329,16 @@ class VKRhythmboxConfig(GObject.Object, PeasGtk.Configurable):
 		schema = schema_source.lookup('org.gnome.rhythmbox.plugins.vk', False)
 		self.settings = Gio.Settings.new_full(schema, None, None)
 		self.API_ID = self.settings.get_string('api-id')
-
 		self.TOKEN = self.settings.get_string('token')
-
 		grid = Gtk.Grid()
 		wv = WebKit.WebView()
 		wv.load_uri("https://oauth.vk.com/oauth/authorize?client_id=%s&scope=audio,offline&redirect_uri=http://oauth.vk.com/blank.html&display=popup&response_type=token" % (self.API_ID))
-		def uri_changed(webview,prop, grid):
+		def uri_changed(webview,prop):
 			url = webview.get_property(prop.name)
 			if url.find("access_token") != -1 :
-				tl = grid.get_toplevel()
 				params = {key:value for key,value in [a.split("=") for a in url.split("#")[1].split("&")]}
 				self.settings.set_string('token', params["access_token"])
-				#we should destroy options dialog here
-				#webview.destroy()
-				#tl.destroy()
-		wv.connect("notify::uri",uri_changed, grid)
+				webview.get_toplevel().emit("close")
+		wv.connect("notify::uri",uri_changed)
 		grid.attach(wv,0,0,1,1)
 		return grid
-
