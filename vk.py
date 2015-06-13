@@ -88,6 +88,9 @@ class VKSource(RB.BrowserSource):
 	def on_query_changed(self, settings, key):
 		self.QUERY = settings.get_string(key)
 		self.search_input.set_text(self.QUERY)
+	def on_fuzzy_changed(self, settings, key):
+		self.FUZZY = settings.get_boolean(key)
+		self.search_fuzzy_checkbox.set_active(self.FUZZY)
 
 
 	def setup(self, db, settings):
@@ -100,12 +103,14 @@ class VKSource(RB.BrowserSource):
 		self.API_ID = self.settings.get_string('api-id')
 		self.AMOUNT =  self.settings.get_int('amount')
 		self.QUERY = self.settings.get_string('query')
+		self.FUZZY = self.settings.get_boolean('fuzzy')
 		self.CAPTCHA_PARAM = ""
 		#monitoring callbacks
 		self.settings.connect("changed::token", self.on_token_changed)
 		self.settings.connect("changed::api-id", self.on_api_id_changed)
 		self.settings.connect("changed::amount", self.on_amount_changed)
 		self.settings.connect("changed::query", self.on_query_changed)
+		self.settings.connect("changed::fuzzy", self.on_fuzzy_changed)
 		#UI setup
 		search_line = Gtk.HBox()
 		self.search_input = Gtk.Entry(activates_default=True)
@@ -118,6 +123,7 @@ class VKSource(RB.BrowserSource):
 		search_line.pack_start(search_button, expand=False, fill=False, padding=2)
 		self.search_fuzzy_checkbox = Gtk.CheckButton.new_with_label(_("Autocomplete"))
 		self.search_fuzzy_checkbox.set_margin_left(10)
+		self.search_fuzzy_checkbox.set_active(self.FUZZY)
 		search_line.pack_start(self.search_fuzzy_checkbox, expand=False, fill=False, padding=0)
 		search_amount_label = Gtk.Label(_("#"))
 		search_amount_label.set_margin_left(10)
@@ -195,6 +201,7 @@ class VKSource(RB.BrowserSource):
 		self.FUZZY = "0"
 		if s_fuzzy() :
 		  self.FUZZY = "1"
+		self.settings.set_boolean("fuzzy", s_fuzzy())
 		try :
 			self.AMOUNT = int(s_amount())
 		except :

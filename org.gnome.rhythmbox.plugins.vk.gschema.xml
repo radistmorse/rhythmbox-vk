@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="gnome-shell-extensions">
+<schemalist>
   <schema path="/org/gnome/rhythmbox/plugins/vk/" id="org.gnome.rhythmbox.plugins.vk">
     <key type="s" name="api-id">
       <default>"1922565"</default>
@@ -20,6 +20,11 @@
       <default>""</default>
       <summary>Search line</summary>
       <description>Saved value of the last search query</description>
+    </key>
+    <key type="b" name="fuzzy">
+      <default>false</default>
+      <summary>Fuzzy option</summary>
+      <description>Whether the fuzzy search should be performed</description>
     </key>
   </schema>
 </schemalist>
