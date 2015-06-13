@@ -13,7 +13,7 @@ INSTALLATION:
 --------------
 - cd ~/.local/share/rhythmbox/plugins  
 - git clone https://github.com/radistmorse/rhythmbox-vk.git vk  
-- In rhythmbox go to menu->mudules  
+- In rhythmbox go to menu->modules  
 - Switch the plugin on.  
 - Press "configure" and login to your VK account. Allow the plugin to access the music.  
 
