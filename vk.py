@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import RB, Gio, Gtk, GdkPixbuf, GObject, Peas, PeasGtk, WebKit
+from gi.repository import RB, Gio, Gtk, GdkPixbuf, GObject, Peas, PeasGtk, WebKit2
 from xml.dom import minidom #xml parser
 from xml.sax.saxutils import unescape #xml unescape
 import urllib.request, urllib.error, urllib.parse #search line escaping, simple https requests
@@ -230,10 +230,13 @@ GObject.type_register(VKSource)
 class XMLResult:
 	def __init__(self, entry):
 		# Store the function. This will be called when we are ready to be added to the db.
-		self.title = entry.getElementsByTagName('title')[0].firstChild.nodeValue.strip()
-		self.duration = int(entry.getElementsByTagName('duration')[0].firstChild.nodeValue)
-		self.artist = entry.getElementsByTagName('artist')[0].firstChild.nodeValue.strip()
-		self.url = entry.getElementsByTagName('url')[0].firstChild.nodeValue
+		try:
+			self.title = entry.getElementsByTagName('title')[0].firstChild.nodeValue.strip()
+			self.duration = int(entry.getElementsByTagName('duration')[0].firstChild.nodeValue)
+			self.artist = entry.getElementsByTagName('artist')[0].firstChild.nodeValue.strip()
+			self.url = entry.getElementsByTagName('url')[0].firstChild.nodeValue
+		except:
+			self.url = None
 
 class VkontakteSearch:
 	def __init__(self, search_line, search_fuzzy, search_num, db, entry_type, query_model, TOKEN):
@@ -248,6 +251,8 @@ class VkontakteSearch:
 		self.CAPTCHA_PARAM = ""
 
 	def add_entry(self, result):
+		if (not result.url):
+			return
 		# add only distinct songs (unique by title+artist+duration) to prevent duplicates
 		strhash = ('%s%s%s' % (result.title, result.artist, result.duration)).lower()
 		if strhash in self.entries_hashes:
@@ -338,7 +343,7 @@ class VKRhythmboxConfig(GObject.Object, PeasGtk.Configurable):
 		self.API_ID = self.settings.get_string('api-id')
 		self.TOKEN = self.settings.get_string('token')
 		grid = Gtk.Grid()
-		wv = WebKit.WebView()
+		wv = WebKit2.WebView()
 		wv.load_uri("https://oauth.vk.com/oauth/authorize?client_id=%s&scope=audio,offline&redirect_uri=http://oauth.vk.com/blank.html&display=popup&response_type=token" % (self.API_ID))
 		def uri_changed(webview,prop):
 			url = webview.get_property(prop.name)
@@ -348,4 +353,6 @@ class VKRhythmboxConfig(GObject.Object, PeasGtk.Configurable):
 				webview.get_toplevel().emit("close")
 		wv.connect("notify::uri",uri_changed)
 		grid.attach(wv,0,0,1,1)
+		wv.set_size_request(550,380)
+		grid.show_all()
 		return grid
